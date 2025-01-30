@@ -1,0 +1,133 @@
+<title>Receipt</title>
+{% extends 'inventory/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<h1>Inventory</h1>
+<h3>Create Receipt</h3>
+<hr>
+<div class="col-md-4">
+    <form id="receipt-form" action="" method="post">{% csrf_token %}
+        {{ receipt_form.as_p }}
+        
+        {% if receipt_form.errors %}
+            <div class="alert alert-danger">
+                <strong>Please correct the following errors:</strong>
+                <ul>
+                    {% for field in receipt_form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        
+        <table class="table">
+            <h5>Products</h5>
+            {{ receiptitem_set.management_form }}  <!-- Ensure management form is included -->
+            <thead>
+                <tr>
+                    {% for field in receiptitem_set.forms.0.visible_fields %}
+                        <th>{{ field.label|capfirst }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in receiptitem_set.forms %}
+                    <tr class="{% cycle 'row1' 'row2' %} formset_row">
+                        {% for field in form.visible_fields %}
+                            <td>
+                                {% if forloop.first %}
+                                    {% for hidden in form.hidden_fields %}
+                                        {{ hidden }}
+                                    {% endfor %}
+                                {% endif %}
+                                {{ field.errors.as_ul }}
+                                {{ field }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if receiptitem_set.non_field_errors %}
+            <div class="alert alert-danger">
+                <strong>Please correct the following errors:</strong>
+                <ul>
+                    {% for error in receiptitem_set.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        
+        <input type="submit" value="Submit" class="btn btn-primary"/>
+    </form>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="{% static 'js/jquery.formset.js' %}"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Initialize formset
+        $('.formset_row').formset({
+            addText: 'Add Product',
+            prefix: 'receiptitem_set',  // Ensure this matches the formset prefix in your Django formset
+            added: function(row) {
+                // Reset values for new form fields
+                row.find('input').val('');
+                row.find('input[name$=product]').on('change', function() {
+                    fetchItem(this);
+                });
+            }
+        });
+        
+        // Fetch product details when product ID is entered
+        $('input[name$=product]').on('change', function() {
+            fetchItem(this);
+        });
+
+        function fetchItem(productInput) {
+            const row = $(productInput).closest('.formset_row');
+            const productId = $(productInput).val();
+
+            if (!productId) {
+                clearItemFields(row);  // Clear the fields if no product ID
+                return;
+            }
+
+            $.ajax({
+                url: "{% url 'inventory:fetch_products' %}",
+                data: { 'product_id': productId },
+                dataType: 'json',  // Expecting JSON response
+                success: function(data) {
+                    console.log('AJAX Success:', data);  // Debugging line
+                    if (data.id && data.description) {
+                        row.find('input[name$=product]').val(data.id);
+                        row.find('input[name$=product_name]').val(data.product_name);
+                        row.find('input[name$=description]').val(data.description);
+                        row.find('input[name$=selling_price]').val(data.selling_price);
+                    } else {
+                        clearItemFields(row);  // Handle case where item doesn't exist
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', error);  // Debugging line
+                    clearItemFields(row);  // Clear the fields on error
+                }
+            });
+        }
+
+        // Clear fields if item fetch fails
+        function clearItemFields(row) {
+            row.find('input[name$=product]').val('');
+            row.find('input[name$=product_name]').val('');
+            row.find('input[name$=description]').val('');
+            row.find('input[name$=selling_price]').val('');
+        }
+    });    
+</script>
+{% endblock %}

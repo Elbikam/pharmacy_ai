@@ -1,0 +1,12 @@
+{% extends 'inventory/base.html' %}
+
+{% block title %}Create Receipt Item{% endblock %}
+
+{% block content %}
+  <h1>Create Receipt Item</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save</button>
+  </form>
+{% endblock %} 
