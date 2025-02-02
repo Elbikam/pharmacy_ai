@@ -52,7 +52,7 @@ class ReciptView(CreateView):
                       
                         #update price 
                         product=Product.objects.get(id=receiptitem_form.product_id)
-                        product.get_price = receiptitem_form.selling_price
+                        product.get_selling_price = receiptitem_form.selling_price
                         product.save()
                         #update inventory
                         try:
@@ -62,8 +62,10 @@ class ReciptView(CreateView):
                             inventory.save()
                         except Inventory.DoesNotExist:
                             #if product not in Inventory create new inventory
-                            product_fk = Product.objects.get(id=receiptitem_form.id)
-                            inventory = Inventory.objects.create(product=product_fk, quantity=receiptitem_form.quantity,price=receiptitem_form.selling_price)
+                            product_fk = Product.objects.get(id=receiptitem_form.product_id)
+                            inventory = Inventory.objects.create(product=product_fk, quantity=receiptitem_form.quantity,
+                                        selling_price=receiptitem_form.selling_price,expiry_date=receiptitem_form.expiry_date,
+                                        reorder_level=receiptitem_form.reorder_level)
                             inventory.save()
                         
 

@@ -15,7 +15,7 @@ class ReciptForm(forms.ModelForm):
 class ReciptItemForm(forms.ModelForm):
     class Meta:
         model = ReceiptItem
-        fields = ['product', 'product_name', 'description','cost_price', 'quantity', 'selling_price','reorder_level']
+        fields = ['product','product_name','description','cost_price', 'quantity', 'selling_price','expiry_date','reorder_level']
     product= forms.CharField(label="Product ID", widget=forms.TextInput(attrs={'placeholder': 'Enter Product ID'}))
     def clean_product(self):
         product = self.cleaned_data['product']

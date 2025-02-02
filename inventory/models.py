@@ -1,57 +1,104 @@
 from django.db import models
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
 
-# Create your models here.
 class Product(models.Model):
-    id = models.BigIntegerField(primary_key=True)
-    name = models.CharField(max_length=255)
-    description = models.CharField(max_length=255)
-    selling_price = models.DecimalField(max_digits=10, decimal_places=2)
+    id = models.BigIntegerField(primary_key=True, verbose_name="Product ID")
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(blank=True)
+    selling_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01)]
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+
     @property
-    def get_price(self):
-        return self.selling_price 
-    @get_price.setter
-    def get_price(self,value):
+    def in_inventory(self):
+        """Check if product exists in inventory"""
+        return hasattr(self, 'inventory')
+    @property
+    def get_selling_price(self):
+        return self.selling_price
+    @get_selling_price.setter
+    def get_selling_price(self,value):
         self.selling_price = value
+        
+    def get_inventory(self):
+        """Safe method to retrieve inventory or None"""
+        try:
+            return self.inventory
+        except Inventory.DoesNotExist:
+            return None
+
+    def add_to_inventory(self, initial_quantity=0, reorder_level=10):
+        """Create inventory entry for product"""
+        if self.in_inventory:
+            raise ValidationError("Product already exists in inventory")
+        return Inventory.objects.create(
+            product=self,
+            quantity=initial_quantity,
+            reorder_level=reorder_level
+        )
+
     def __str__(self):
         return f"{self.name} (ID: {self.id})"
+
+class Inventory(models.Model):
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='inventory'
+    )
+    quantity = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+    reorder_level = models.IntegerField(
+        default=10,
+        validators=[MinValueValidator(0)]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
+    expiry_date = models.DateField()
+    selling_price = models.DecimalField(max_digits=10,decimal_places=2)
+
+    @property
+    def needs_restock(self):
+        return self.quantity <= self.reorder_level
+    @property
+    def current_quantity(self):
+        return self.quantity
+    @current_quantity.setter
+    def current_quantity(self,value):
+        self.quantity = value
+    
+
+    def __str__(self):
+        return f"Inventory for {self.product.name} (Qty: {self.quantity})"
 
 class Receipt(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     delivery_note = models.CharField(max_length=255)
+    supplier = models.CharField(max_length=255)
+
     def __str__(self):
-        return f"{self.pk} {self.delivery_note} - {self.created_at.strftime('%Y-%m-%d')}"
+        return f"Receipt #{self.id} from {self.supplier}"
 
 class ReceiptItem(models.Model):
-    receipt = models.ForeignKey(Receipt, on_delete=models.CASCADE)
+    receipt = models.ForeignKey(Receipt, on_delete=models.CASCADE, related_name='receiptitem_set')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    product_name = models.CharField(max_length=255)
-    description = models.CharField(max_length=255)
+    product_name = models.CharField(max_length=50)
+    description = models.CharField(max_length=250)
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     cost_price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.IntegerField()
+    expiry_date = models.DateField()
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)
-    reorder_level = models.IntegerField(default=10)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"{self.product.name} ({self.quantity}) - {self.price} for {self.receipt}"
+    reorder_level = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
 
-class Inventory(models.Model):
-    product = models.OneToOneField(Product, on_delete=models.CASCADE, blank=True, primary_key=True)
-    quantity = models.IntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    reorder_level = models.IntegerField(default=10)
-    created_at = models.DateTimeField(auto_now_add=True)
-    @property
-    def current_quantity(self):
-        return self.quantity
-    
-    @current_quantity.setter
-    def current_quantity(self, value):
-        self.quantity = value
+   
 
     def __str__(self):
-        return f"{self.product.name} ({self.quantity})"
-
-    
+        return f"{self.quantity}x {self.product.name} (Cost: ${self.cost_price})"
