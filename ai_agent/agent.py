@@ -2,20 +2,34 @@ import os
 from dotenv import load_dotenv
 from twilio.rest import Client
 from django.utils import timezone
-from inventory.models import *
+from inventory.models import Inventory, Product
 from notification.models import Notification
-
+from inventory.models import *
+import json
+# To relative or app-based imports
+from django.conf import settings
+from datetime import timedelta 
 
 load_dotenv()
 
 class PharmacyAIAgent:
     def __init__(self):
-        self.twilio_client = Client(
-            os.getenv('TWILIO_ACCOUNT_SID'),
-            os.getenv('TWILIO_AUTH_TOKEN')
+
+        self.client = Client(os.getenv('TWILIO_ACCOUNT_SID'), 
+                            os.getenv('TWILIO_AUTH_TOKEN'))
+        self.from_whatsapp = f'whatsapp:{os.getenv("TWILIO_PHONE_NUMBER")}'
+        self.to_whatsapp = f'whatsapp:{os.getenv("PHARMACY_MANAGER_NUMBER")}'
+
+
+    def send_test_message(self):
+        """Basic message verification"""
+        message = self.client.messages.create(
+            body='🚨 TEST: Pharmacy AI Connection Working',
+            from_=self.from_whatsapp,
+            to=self.to_whatsapp
         )
-        self.admin_number = os.getenv('PHARMACY_MANAGER_NUMBER')
-        self.low_stock_threshold = float(os.getenv('LOW_STOCK_THRESHOLD', 0.2))
+        return message.sid
+   
 
     def monitor_inventory(self):
         """Check stock levels and expiry dates daily"""
@@ -24,7 +38,7 @@ class PharmacyAIAgent:
         )
         
         expired_items = ReceiptItem.objects.filter(
-            expiry_date__lte=timezone.now().date() + timedelta(days=7) # type: ignore
+            expiry_date__lte=timezone.now().date() + timedelta(days=7)
         )
 
         if low_stock_items.exists() or expired_items.exists():
@@ -44,22 +58,15 @@ class PharmacyAIAgent:
             
             self.send_alert(message)
 
-    def send_alert(self, message):
-        """Send notification via WhatsApp and save to database"""
-        # Send via Twilio
-        self.twilio_client.messages.create(
-            body=message,
-            from_=f'whatsapp:{os.getenv("TWILIO_PHONE_NUMBER")}',
-            to=f'whatsapp:{self.admin_number}'
+    def send_alert(self, message: str):
+        """Simplified version that works like test_message"""
+        return self.client.messages.create(
+            body=message,  # Use body instead of template
+            from_=self.from_whatsapp,
+            to=self.to_whatsapp,
+            
         )
         
-        # Save to database
-        Notification.objects.create(
-            message=message,
-            phone_number=self.admin_number,
-            notification_type='W'
-        )
-
     def handle_whatsapp_command(self, command):
         """Process incoming WhatsApp commands"""
         command = command.strip().lower()
@@ -89,7 +96,7 @@ class PharmacyAIAgent:
             expiring_soon = ReceiptItem.objects.filter(
                 expiry_date__range=[
                     timezone.now().date(),
-                    timezone.now().date() + timedelta(days=30) # type: ignore
+                    timezone.now().date() + timedelta(days=30)
                 ]
             )
             response = "⚠️ Expiring Soon:\n" + "\n".join(
@@ -111,7 +118,7 @@ class PharmacyAIAgent:
         demo_data = {
             "low_stock": Inventory.objects.filter(needs_restock=True)[:3],
             "expiring_soon": ReceiptItem.objects.filter(
-                expiry_date__lte=timezone.now() + timedelta(days=14) # type: ignore
+                expiry_date__lte=timezone.now() + timedelta(days=14)
             )[:3]
         }
         

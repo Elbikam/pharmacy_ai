@@ -144,3 +144,17 @@ CELERY_BEAT_SCHEDULE = {
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+# Must have at the top
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Direct path specification (since we know exact location)
+BASE_DIR = Path("/home/b-elbikam/pharmacy_ai/")  # ← Full path to project root
+load_dotenv(BASE_DIR / '.env')  # ← Load from explicit path
+
+# Configuration (keep values raw)
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+PHARMACY_MANAGER_NUMBER = "+212628817748"  
+TWILIO_PHONE_NUMBER = "+14155238886" 
