@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
-        fields = ['id','name', 'description', 'selling_price']
+        fields = ['id','product', 'description', 'selling_price']
 
 class ReciptForm(forms.ModelForm):
     class Meta:
@@ -15,12 +15,19 @@ class ReciptForm(forms.ModelForm):
 class ReciptItemForm(forms.ModelForm):
     class Meta:
         model = ReceiptItem
-        fields = ['product','product_name','description','cost_price', 'quantity', 'selling_price','expiry_date','reorder_level']
-    product= forms.CharField(label="Product ID", widget=forms.TextInput(attrs={'placeholder': 'Enter Product ID'}))
-    def clean_product(self):
-        product = self.cleaned_data['product']
+        fields = ['product_id','product','description',
+                'cost_price', 'quantity', 'selling_price',
+                'expiry_date','safety_stock']
+    
+    product_id = forms.CharField(label="Product ID", widget=forms.TextInput(attrs={'placeholder': 'Enter Product ID'}))
+
+    def clean_product_id(self):
+        # Corrected from self.clean to self.cleaned_data
+        item_id = self.cleaned_data['product_id']
         try:
-            return Product.objects.get(id=product)  # Fetch the Item instance based on the ID
+            # Return the Product instance instead of just validating
+            product = Product.objects.get(id=item_id)
+            return product  # This will assign the Product instance to the ForeignKey
         except Product.DoesNotExist:
             raise ValidationError("Invalid product ID. Please enter a valid ID.")
 

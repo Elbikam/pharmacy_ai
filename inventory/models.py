@@ -3,9 +3,9 @@ from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 
 class Product(models.Model):
-    id = models.BigIntegerField(primary_key=True, verbose_name="Product ID")
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True)
+    id = models.BigIntegerField(primary_key=True)
+    product = models.CharField(max_length=255, unique=True)
+    description = models.CharField(max_length=250)
     selling_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -42,20 +42,22 @@ class Product(models.Model):
         )
 
     def __str__(self):
-        return f"{self.name} (ID: {self.id})"
+        return f"{self.id} (ID: {self.product})"
 
 class Inventory(models.Model):
-    product = models.OneToOneField(
+    id = models.OneToOneField(
         Product,
         on_delete=models.CASCADE,
         primary_key=True,
-        related_name='inventory'
+        
     )
+    product = models.CharField(max_length=15)
+    description = models.CharField(max_length=250)
     quantity = models.IntegerField(
         default=0,
         validators=[MinValueValidator(0)]
     )
-    reorder_level = models.IntegerField(
+    safety_stock = models.IntegerField(
         default=10,
         validators=[MinValueValidator(0)]
     )
@@ -66,7 +68,7 @@ class Inventory(models.Model):
 
     @property
     def needs_restock(self):
-        return self.quantity <= self.reorder_level
+        return self.quantity <= self.safety_stock
     @property
     def current_quantity(self):
         return self.quantity
@@ -88,14 +90,14 @@ class Receipt(models.Model):
 
 class ReceiptItem(models.Model):
     receipt = models.ForeignKey(Receipt, on_delete=models.CASCADE, related_name='receiptitem_set')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    product_name = models.CharField(max_length=50)
+    product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.CharField(max_length=50)
     description = models.CharField(max_length=250)
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     cost_price = models.DecimalField(max_digits=10, decimal_places=2)
     expiry_date = models.DateField()
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)
-    reorder_level = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    safety_stock = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 
 
    

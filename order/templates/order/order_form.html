@@ -1,41 +1,30 @@
-<title>Receipt</title>
-{% extends 'inventory/base.html' %}
+<title>create order </title>
+{% extends 'order/base.html' %}
+{% block content %}
 {% load static %}
 {% load crispy_forms_tags %}
-
-{% block content %}
-<h1>Inventory</h1>
-<h3>Create Receipt</h3>
-<hr>
-<div class="col-md-4">
-    <form id="receipt-form" action="" method="post">{% csrf_token %}
-        {{ receipt_form.as_p }}
-        
-        {% if receipt_form.errors %}
-            <div class="alert alert-danger">
-                <strong>Please correct the following errors:</strong>
-                <ul>
-                    {% for field in receipt_form %}
-                        {% for error in field.errors %}
-                            <li>{{ field.label }}: {{ error }}</li>
-                        {% endfor %}
-                    {% endfor %}
-                </ul>
-            </div>
-        {% endif %}
-        
-        <table class="table">
-            <h5>Products</h5>
-            {{ receiptitem_set.management_form }}  <!-- Ensure management form is included -->
-            <thead>
-                <tr>
-                    {% for field in receiptitem_set.forms.0.visible_fields %}
-                        <th>{{ field.label|capfirst }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for form in receiptitem_set.forms %}
+<div class="order-container">
+    <div class="order-header">
+        <h1>Order</h1>
+        <h3>Create Order</h3>
+    </div>
+    <div class="col-md-4">
+        <form id="sale-order-form" action="" method="post">{% csrf_token %}
+            {{order_form.as_p}}
+            <table class="table"> 
+                <!-- Orders Formset -->
+                <h5>Orders</h5>
+                {{ orders.management_form }}
+                {% for form in orders.forms %}
+                    {% if forloop.first %}
+                    <thead>
+                        <tr>
+                            {% for field in form.visible_fields %}
+                                <th>{{ field.label|capfirst }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    {% endif %}
                     <tr class="{% cycle 'row1' 'row2' %} formset_row">
                         {% for field in form.visible_fields %}
                             <td>
@@ -50,24 +39,15 @@
                         {% endfor %}
                     </tr>
                 {% endfor %}
-            </tbody>
-        </table>
-        
-        {% if receiptitem_set.non_field_errors %}
-            <div class="alert alert-danger">
-                <strong>Please correct the following errors:</strong>
-                <ul>
-                    {% for error in receiptitem_set.non_field_errors %}
-                        <li>{{ error }}</li>
-                    {% endfor %}
-                </ul>
-            </div>
-        {% endif %}
-        
-        <input type="submit" value="Submit" class="btn btn-primary"/>
-    </form>
-</div>
+            </table>
 
+            <div class="total-amount">
+                <strong>Total Amount: <span id="total-amount">0.00</span></strong>
+            </div>
+            <input type="submit" value="Submit"/> 
+        </form>
+    </div>
+</div>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="{% static 'js/jquery.formset.js' %}"></script>
 <script type="text/javascript">
@@ -75,18 +55,18 @@
         // Initialize formset
         $('.formset_row').formset({
             addText: 'Add Product',
-            prefix: 'receiptitem_set',  // Ensure this matches the formset prefix in your Django formset
+            prefix: 'orderitem_set',  // Ensure this matches the formset prefix in your Django formset
             added: function(row) {
                 // Reset values for new form fields
                 row.find('input').val('');
-                row.find('input[name$=product_id]').on('change', function() {
+                row.find('input[name$=product]').on('change', function() {
                     fetchItem(this);
                 });
             }
         });
         
         // Fetch product details when product ID is entered
-        $('input[name$=product_id]').on('change', function() {
+        $('input[name$=product]').on('change', function() {
             fetchItem(this);
         });
 
@@ -100,14 +80,14 @@
             }
 
             $.ajax({
-                url: "{% url 'inventory:fetch_in_products' %}",
+                url: "{% url 'inventory:fetch_products' %}",
                 data: { 'product_id': productId },
                 dataType: 'json',  // Expecting JSON response
                 success: function(data) {
                     console.log('AJAX Success:', data);  // Debugging line
                     if (data.id && data.description) {
-                        row.find('input[name$=product_id]').val(data.id);
-                        row.find('input[name$=product]').val(data.product);
+                        row.find('input[name$=product]').val(data.id);
+                        row.find('input[name$=product_name]').val(data.product_name);
                         row.find('input[name$=description]').val(data.description);
                         row.find('input[name$=selling_price]').val(data.selling_price);
                     } else {
@@ -123,7 +103,7 @@
 
         // Clear fields if item fetch fails
         function clearItemFields(row) {
-            row.find('input[name$=product_id]').val('');
+            row.find('input[name$=product]').val('');
             row.find('input[name$=product_name]').val('');
             row.find('input[name$=description]').val('');
             row.find('input[name$=selling_price]').val('');
@@ -131,3 +111,5 @@
     });    
 </script>
 {% endblock %}
+
+

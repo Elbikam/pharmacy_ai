@@ -24,5 +24,5 @@ urlpatterns = [
     path("inventory/", include("inventory.urls")),
     path("order/", include("order.urls")),
     path("notification/", include("notification.urls")),
-    path("ai_agent/", include("ai_agent.urls")),
+    path("ai-agent/", include("ai_agent.urls")),
 ]
